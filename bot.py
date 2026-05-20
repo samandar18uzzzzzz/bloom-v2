@@ -35,7 +35,7 @@ async def handle_update(data):
         msg = data["message"]
         if msg.get("text") == "/start":
             kb = {"inline_keyboard": [[
-                {"text": "🛒 Do'konni ochish", "url": "https://samandar18uzzzzzz.github.io/bloom-v2"}
+                {"text": "🛒 Do'konni ochish", "url": "https://t.me/bloomuz_bot/fastfood"}
             ], [
                 {"text": "🙋 Yordam", "callback_data": "help"}
             ]]}
