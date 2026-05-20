@@ -611,6 +611,21 @@ function updateSummary(){
   document.getElementById('sumTotal').textContent=jami.toLocaleString()+" so'm";
 }
 
+// ═══ WEBHOOK ═══
+const WEBHOOK = "https://bloom-v2-1-61np.onrender.com/webhook";
+
+async function sendToTelegram(order) {
+  try {
+    await fetch(WEBHOOK, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({order: order})
+    });
+  } catch(e) {
+    console.log('Webhook xato:', e);
+  }
+}
+
 // PLACE ORDER — LOCALSTORAGE DA SAQLASH
 function placeOrder(){
   if(!savat.length){showToast('❗ Savat bo\'sh!');showPage('home');return;}
@@ -646,6 +661,9 @@ function placeOrder(){
   orders.unshift(newOrder);
   saveOrders(orders);
   updateOrderNotif();
+
+  // Telegramga yuborish
+  sendToTelegram(newOrder);
 
   // Success modal
   document.getElementById('sdet').innerHTML=`
