@@ -1,73 +1,112 @@
 import os
-import logging
 import asyncio
+import logging
+import json
 from aiohttp import web
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import aiohttp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-ADMIN_ID  = int(os.environ.get("ADMIN_ID", "0"))
+ADMIN_ID  = os.environ.get("ADMIN_ID", "0")
 PORT      = int(os.environ.get("PORT", "8080"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app_bot = None
+TG_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🛒 Do'konni ochish", url="https://samandar18uzzzzzz.github.io/bloom-v2")],
-        [InlineKeyboardButton("🙋 Yordam", callback_data="help")],
-    ])
-    await update.message.reply_text(
-        "🌸 *Bloom Do'koniga xush kelibsiz!*\n\n"
-        "Toza va yangi mahsulotlar eshigingizgacha! 🚀\n\n"
-        "Buyurtma berish uchun do'konni oching 👇",
-        parse_mode="Markdown",
-        reply_markup=keyboard
-    )
+async def send_message(chat_id, text, reply_markup=None):
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    async with aiohttp.ClientSession() as s:
+        await s.post(f"{TG_API}/sendMessage", json=payload)
 
-async def help_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    await update.callback_query.message.reply_text(
-        "🙋 *Yordam*\n\n"
-        "📞 Tel: +998 50 211 18 06\n"
-        "✈️ Telegram: @bloom\\_support\n"
-        "🕐 Ish vaqti: 08:00 — 22:00",
-        parse_mode="Markdown"
-    )
+async def edit_markup(chat_id, message_id, reply_markup):
+    payload = {"chat_id": chat_id, "message_id": message_id, "reply_markup": json.dumps(reply_markup)}
+    async with aiohttp.ClientSession() as s:
+        await s.post(f"{TG_API}/editMessageReplyMarkup", json=payload)
 
-async def order_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    parts = query.data.split("_")
-    action, chat_id, order_id = parts[0], int(parts[1]), parts[2]
+async def answer_callback(callback_id):
+    async with aiohttp.ClientSession() as s:
+        await s.post(f"{TG_API}/answerCallbackQuery", json={"callback_query_id": callback_id})
 
-    if action == "accept":
-        await query.edit_message_reply_markup(
-            InlineKeyboardMarkup([[InlineKeyboardButton("✅ Qabul qilindi", callback_data="done")]]))
-        if chat_id:
-            try:
-                await context.bot.send_message(chat_id,
-                    f"✅ *Buyurtmangiz qabul qilindi!*\n🆔 #{order_id}\n🚚 Tez orada yetkazamiz!",
-                    parse_mode="Markdown")
-            except: pass
+async def handle_update(data):
+    if "message" in data:
+        msg = data["message"]
+        if msg.get("text") == "/start":
+            kb = {"inline_keyboard": [[
+                {"text": "🛒 Do'konni ochish", "url": "https://samandar18uzzzzzz.github.io/bloom-v2"}
+            ], [
+                {"text": "🙋 Yordam", "callback_data": "help"}
+            ]]}
+            await send_message(msg["chat"]["id"],
+                "🌸 *Bloom Do'koniga xush kelibsiz!*\n\n"
+                "Toza va yangi mahsulotlar eshigingizgacha! 🚀\n\n"
+                "Buyurtma berish uchun do'konni oching 👇", kb)
 
-    elif action == "reject":
-        await query.edit_message_reply_markup(
-            InlineKeyboardMarkup([[InlineKeyboardButton("❌ Bekor qilindi", callback_data="done")]]))
-        if chat_id:
-            try:
-                await context.bot.send_message(chat_id,
-                    f"😔 *Kechirasiz, hozircha buyurtma qabul qilib bo'lmaydi.*\n🆔 #{order_id}\n📞 +998 71 200 00 00",
-                    parse_mode="Markdown")
-            except: pass
+    elif "callback_query" in data:
+        cb = data["callback_query"]
+        cb_id = cb["id"]
+        cb_data = cb.get("data", "")
+        chat_id = cb["message"]["chat"]["id"]
+        msg_id = cb["message"]["message_id"]
+        await answer_callback(cb_id)
 
-async def webhook(request):
+        if cb_data == "help":
+            await send_message(chat_id,
+                "🙋 *Yordam*\n\n"
+                "📞 Tel: +998 50 211 18 06\n"
+                "✈️ Telegram: @samik\\_1806\n"
+                "🕐 Ish vaqti: 08:00 — 22:00")
+
+        elif cb_data.startswith("accept_"):
+            parts = cb_data.split("_")
+            user_id = parts[1]
+            order_id = parts[2]
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[{"text": "✅ Qabul qilindi", "callback_data": "done"}]]})
+            if user_id and user_id != "0":
+                await send_message(user_id,
+                    f"✅ *Buyurtmangiz qabul qilindi!*\n"
+                    f"🆔 #{order_id}\n"
+                    f"🚚 Tez orada yetkazib beramiz!\n"
+                    f"📞 +998 71 200 00 00")
+
+        elif cb_data.startswith("reject_"):
+            parts = cb_data.split("_")
+            user_id = parts[1]
+            order_id = parts[2]
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[{"text": "❌ Bekor qilindi", "callback_data": "done"}]]})
+            if user_id and user_id != "0":
+                await send_message(user_id,
+                    f"😔 *Kechirasiz, hozircha buyurtma qabul qilib bo'lmaydi.*\n"
+                    f"🆔 #{order_id}\n"
+                    f"📞 +998 71 200 00 00")
+
+# CORS headers qo'shish
+def cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+async def telegram_webhook(request):
+    data = await request.json()
+    asyncio.create_task(handle_update(data))
+    return web.Response(text="ok", headers=cors_headers())
+
+async def order_webhook(request):
+    # OPTIONS preflight
+    if request.method == "OPTIONS":
+        return web.Response(status=200, headers=cors_headers())
     try:
         data = await request.json()
+        logger.info(f"Zakaz keldi: {data}")
         o = data.get("order", {})
-        items = "\n".join([f"  {i.get('emoji','')} {i.get('nom','')} x{i.get('n',1)} = {i.get('narx',0)*i.get('n',1):,} som" for i in o.get("items",[])])
+        items = "\n".join([
+            f"  {i.get('emoji','')} {i.get('nom','')} x{i.get('n',1)} = {i.get('narx',0)*i.get('n',1):,} so'm"
+            for i in o.get("items", [])
+        ])
         text = (
             f"🌸 *YANGI ZAKAZ!*\n\n"
             f"🆔 {o.get('id','')}\n"
@@ -79,58 +118,34 @@ async def webhook(request):
             f"🛒 *Mahsulotlar:*\n{items}\n\n"
             f"💰 *Jami: {o.get('total',0):,} so'm*"
         )
-        cid = o.get("id","").replace("#","")
-        uid = o.get("chat_id", 0)
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("✅ Qabul", callback_data=f"accept_{uid}_{cid}"),
-            InlineKeyboardButton("❌ Bekor", callback_data=f"reject_{uid}_{cid}"),
-        ]])
-        await app_bot.bot.send_message(ADMIN_ID, text, parse_mode="Markdown", reply_markup=kb)
-        return web.json_response({"ok": True})
+        uid = str(o.get("chat_id", 0))
+        oid = o.get("id","").replace("#","")
+        kb = {"inline_keyboard": [[
+            {"text": "✅ Qabul qilish", "callback_data": f"accept_{uid}_{oid}"},
+            {"text": "❌ Bekor qilish", "callback_data": f"reject_{uid}_{oid}"},
+        ]]}
+        await send_message(ADMIN_ID, text, kb)
+        return web.json_response({"ok": True}, headers=cors_headers())
     except Exception as e:
-        return web.json_response({"ok": False, "error": str(e)}, status=500)
+        logger.error(f"Xato: {e}")
+        return web.json_response({"ok": False, "error": str(e)}, status=500, headers=cors_headers())
 
 async def health(request):
-    return web.Response(text="Bloom Bot ishlayapti! 🌸")
+    return web.Response(text="Bloom Bot ishlayapti! 🌸", headers=cors_headers())
 
-async def main():
+async def setup_webhook(app):
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "")
+    if render_url:
+        async with aiohttp.ClientSession() as s:
+            r = await s.post(f"{TG_API}/setWebhook", json={"url": f"{render_url}/tg"})
+            logger.info(f"Webhook: {render_url}/tg — {await r.text()}")
 
-    global app_bot
-
-    app_bot = Application.builder().token(BOT_TOKEN).build()
-
-    app_bot.add_handler(CommandHandler("start", start))
-
-    app_bot.add_handler(CallbackQueryHandler(help_cb, pattern="^help$"))
-
-    app_bot.add_handler(
-
-        CallbackQueryHandler(order_cb, pattern="^(accept|reject)_")
-
-    )
-
-    await app_bot.initialize()
-
-    await app_bot.start()
-
-    await app_bot.updater.start_polling()
-
-    web_app = web.Application()
-
-    web_app.router.add_get("/", health)
-
-    web_app.router.add_post("/webhook", webhook)
-
-    runner = web.AppRunner(web_app)
-
-    await runner.setup()
-
-    await web.TCPSite(runner, "0.0.0.0", PORT).start()
-
-    logger.info(f"Ishga tushdi! Port: {PORT}")
-
-    await asyncio.Event().wait()
+app = web.Application()
+app.router.add_get("/", health)
+app.router.add_post("/tg", telegram_webhook)
+app.router.add_post("/webhook", order_webhook)
+app.router.add_route("OPTIONS", "/webhook", order_webhook)
+app.on_startup.append(setup_webhook)
 
 if __name__ == "__main__":
-
-    asyncio.run(main())
+    web.run_app(app, host="0.0.0.0", port=PORT)
