@@ -94,32 +94,6 @@ async def health(request):
     return web.Response(text="Bloom Bot ishlayapti! 🌸")
 
 async def main():
-    global app_bot
-    app_bot = Application.builder().token(BOT_TOKEN).build()
-    app_bot.add_handler(CommandHandler("start", start))
-    app_bot.add_handler(CallbackQueryHandler(help_cb, pattern="^help$"))
-    app_bot.add_handler(CallbackQueryHandler(order_cb, pattern="^(accept|reject)_"))
-
-    await app_bot.initialize()
-    await app_bot.start()
-
-    # Polling
-    await app_bot.initialize()
-await app_bot.start()
-await app_bot.updater.start_polling()
-
-    web_app = web.Application()
-    web_app.router.add_get("/", health)
-    web_app.router.add_post("/webhook", webhook)
-
-    runner = web.AppRunner(web_app)
-    await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", PORT).start()
-
-    logger.info(f"Ishga tushdi! Port: {PORT}")
-    await asyncio.Event().wait()
-
-async def main():
 
     global app_bot
 
@@ -151,11 +125,11 @@ async def main():
 
     await runner.setup()
 
-await web.TCPSite(runner, "0.0.0.0", PORT).start()
+    await web.TCPSite(runner, "0.0.0.0", PORT).start()
 
-logger.info(f"Ishga tushdi! Port: {PORT}")
+    logger.info(f"Ishga tushdi! Port: {PORT}")
 
-await asyncio.Event().wait()
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
 
