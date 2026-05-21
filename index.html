@@ -248,6 +248,43 @@ body.dark .dark-toggle{background:#1e1e1e;}
 .zone-free{background:#4caf50;}
 .zone-paid{background:#ff9a3c;}
 .zone-out{background:#f44336;}
+
+/* LOADING & SKELETON */
+.spinner-wrap{display:flex;align-items:center;justify-content:center;padding:60px 0;}
+.spinner{width:36px;height:36px;border:4px solid #e8f5e9;border-top:4px solid #2e7d32;border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:10px;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{background:#fff;border-radius:14px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;}
+.skel-emo{width:46px;height:46px;border-radius:12px;}
+.skel-info{flex:1;}
+.skel-line{height:12px;margin-bottom:6px;border-radius:6px;}
+.skel-line.short{width:60%;}
+
+/* ERROR STATE */
+.error-box{background:#fff3f3;border:1px solid #ffcdd2;border-radius:14px;padding:20px;margin:16px;text-align:center;}
+.error-ico{font-size:36px;margin-bottom:8px;}
+.error-msg{font-size:13px;font-weight:700;color:#c62828;margin-bottom:10px;}
+.retry-btn{background:#f44336;color:#fff;border:none;cursor:pointer;border-radius:10px;padding:8px 20px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;}
+
+/* SCROLL TO TOP */
+.scroll-top{position:fixed;bottom:90px;right:16px;width:40px;height:40px;background:#2e7d32;color:#fff;border:none;cursor:pointer;border-radius:50%;font-size:18px;display:none;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 12px rgba(46,125,50,0.4);transition:all 0.3s;}
+.scroll-top.show{display:flex;}
+
+/* CONFIRM MODAL */
+.confirm-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:250;align-items:center;justify-content:center;padding:20px;}
+.confirm-modal.on{display:flex;}
+.confirm-box{background:#fff;border-radius:20px;padding:24px 20px;max-width:300px;width:100%;text-align:center;}
+.confirm-ico{font-size:48px;margin-bottom:10px;}
+.confirm-box h3{font-size:16px;font-weight:800;color:#1a2e1a;margin-bottom:6px;}
+.confirm-box p{font-size:12px;color:#aaa;font-weight:600;margin-bottom:16px;}
+.confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.confirm-yes{background:linear-gradient(135deg,#2e7d32,#4caf50);color:#fff;border:none;cursor:pointer;border-radius:10px;padding:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;}
+.confirm-no{background:#f5f5f5;color:#555;border:none;cursor:pointer;border-radius:10px;padding:12px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;}
+
+/* INTERNET ERROR TOAST */
+.net-error{position:fixed;top:0;left:0;right:0;background:#f44336;color:#fff;padding:10px 16px;font-size:12px;font-weight:700;text-align:center;z-index:600;transform:translateY(-100%);transition:transform 0.3s;}
+.net-error.show{transform:translateY(0);}
 </style>
 </head>
 <body>
@@ -422,7 +459,7 @@ body.dark .dark-toggle{background:#1e1e1e;}
       <span class="stval" id="sumtot">0 so'm</span>
     </div>
   </div>
-  <button class="bigbtn" id="btn-confirm" onclick="placeOrder()">✅ Buyurtmani tasdiqlash</button>
+  <button class="bigbtn" id="btn-confirm" onclick="showConfirm()">✅ Buyurtmani tasdiqlash</button>
   <div style="height:14px;"></div>
 </div>
 
@@ -457,6 +494,26 @@ body.dark .dark-toggle{background:#1e1e1e;}
   <div id="faqArea"></div>
   <div style="height:14px;"></div>
 </div>
+
+
+<!-- SCROLL TOP -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- CONFIRM MODAL -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-ico">🛒</div>
+    <h3>Zakaz berasizmi?</h3>
+    <p id="confirmSummary">Buyurtmani tasdiqlaysizmi?</p>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeConfirm()">Bekor</button>
+      <button class="confirm-yes" onclick="confirmOrder()">Ha, zakaz!</button>
+    </div>
+  </div>
+</div>
+
+<!-- NET ERROR -->
+<div class="net-error" id="netError">📵 Internet aloqasi yo'q! Tekshiring...</div>
 
 <!-- CART -->
 <div class="overlay" id="overlay" onclick="closeCart()">
@@ -833,6 +890,53 @@ function renderOrders() {
   if(b) { b.textContent = active; b.style.display = active ? 'flex' : 'none'; }
 }
 
+
+// ── SCROLL TO TOP ─────────────────────────────
+window.addEventListener('scroll', function() {
+  var btn = document.getElementById('scrollTop');
+  if(btn) btn.className = 'scroll-top' + (window.scrollY > 300 ? ' show' : '');
+});
+
+// ── INTERNET TEKSHIRISH ───────────────────────
+window.addEventListener('online', function() {
+  var el = document.getElementById('netError');
+  if(el) el.className = 'net-error';
+});
+window.addEventListener('offline', function() {
+  var el = document.getElementById('netError');
+  if(el) el.className = 'net-error show';
+});
+
+// ── CONFIRM MODAL ─────────────────────────────
+function showConfirm() {
+  var jami = 0; savat.forEach(function(i) { jami += i.narx * i.n; });
+  var items = savat.map(function(s) { return s.emoji + ' ' + s.nom + ' x' + s.n; }).join(', ');
+  document.getElementById('confirmSummary').textContent = items + ' — ' + jami.toLocaleString() + " so'm";
+  document.getElementById('confirmModal').className = 'confirm-modal on';
+}
+function closeConfirm() {
+  document.getElementById('confirmModal').className = 'confirm-modal';
+}
+function confirmOrder() {
+  closeConfirm();
+  placeOrder();
+}
+
+// ── SKELETON LOADING ──────────────────────────
+function showSkeleton() {
+  var area = document.getElementById('menuArea');
+  var html = '<div class="msec">';
+  for(var i = 0; i < 4; i++) {
+    html += '<div class="skel-card">'
+      + '<div class="skeleton skel-emo"></div>'
+      + '<div class="skel-info">'
+      + '<div class="skeleton skel-line" style="width:70%"></div>'
+      + '<div class="skeleton skel-line short"></div>'
+      + '</div></div>';
+  }
+  area.innerHTML = html + '</div>';
+}
+
 // ── TOAST ───────────────────────────────────────
 var toastTmr;
 function showT(msg) {
@@ -1128,22 +1232,7 @@ function placeOrder() {
   order.status = 'new';
   orders.unshift(order);
   saveOrders(orders);
-  // Status o'zgartirish
-  setTimeout(function() {
-    var ords = loadOrders();
-    var idx = -1; ords.forEach(function(o,i) { if(o.id === oid) idx = i; });
-    if(idx !== -1 && ords[idx].status === 'new') { ords[idx].status = 'prep'; saveOrders(ords); }
-  }, 5000);
-  setTimeout(function() {
-    var ords = loadOrders();
-    var idx = -1; ords.forEach(function(o,i) { if(o.id === oid) idx = i; });
-    if(idx !== -1 && ords[idx].status === 'prep') { ords[idx].status = 'way'; saveOrders(ords); }
-  }, 12000);
-  setTimeout(function() {
-    var ords = loadOrders();
-    var idx = -1; ords.forEach(function(o,i) { if(o.id === oid) idx = i; });
-    if(idx !== -1 && ords[idx].status === 'way') { ords[idx].status = 'done'; saveOrders(ords); showT('🎉 Buyurtmangiz yetkazildi!'); }
-  }, 20000);
+  // Status faqat admin tasdiqlashi bilan o'zgaradi
 
   document.getElementById('smod').className = 'smod on';
 }
@@ -1187,6 +1276,7 @@ try { var saved = localStorage.getItem('bl_cart'); if(saved) savat = JSON.parse(
 try { var savedLang = localStorage.getItem('bl_lang'); if(savedLang) curLang = savedLang; } catch(e) {}
 
 buildCats();
+showSkeleton();
 buildSlots();
 buildFaq();
 renderMenu('all');
