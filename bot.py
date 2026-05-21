@@ -26,63 +26,135 @@ async def edit_markup(chat_id, message_id, reply_markup):
     async with aiohttp.ClientSession() as s:
         await s.post(f"{TG_API}/editMessageReplyMarkup", json=payload)
 
-async def answer_callback(callback_id):
+async def answer_callback(callback_id, text=""):
     async with aiohttp.ClientSession() as s:
-        await s.post(f"{TG_API}/answerCallbackQuery", json={"callback_query_id": callback_id})
+        await s.post(f"{TG_API}/answerCallbackQuery", json={"callback_query_id": callback_id, "text": text})
 
 async def handle_update(data):
+    # /start
     if "message" in data:
         msg = data["message"]
-        if msg.get("text") == "/start":
+        text = msg.get("text", "")
+        chat_id = msg["chat"]["id"]
+
+        if text == "/start":
             kb = {"inline_keyboard": [[
-                {"text": "🛒 Do'konni ochish", "url": "https://t.me/bloomuz_bot/fastfood"}
+                {"text": "🍕 Do'konni ochish", "url": "https://t.me/bloomuz_bot/fastfood"}
             ], [
                 {"text": "🙋 Yordam", "callback_data": "help"}
             ]]}
-            await send_message(msg["chat"]["id"],
-                "🌸 *Bloom Do'koniga xush kelibsiz!*\n\n"
-                "Toza va yangi mahsulotlar eshigingizgacha! 🚀\n\n"
-                "Buyurtma berish uchun do'konni oching 👇", kb)
+            await send_message(chat_id,
+                "🌸 *Bloom Fast Food ga xush kelibsiz!*\n\n"
+                "Tez va mazali taomlar eshigingizgacha! 🚀\n\n"
+                "Buyurtma berish uchun do'konni oching 👇",
+                kb)
 
+        elif text == "/help":
+            await send_message(chat_id,
+                "🙋 *Yordam*\n\n"
+                "📞 Tel: +998 78 555 08 08\n"
+                "✈️ Telegram: @bloom\\_support\n"
+                "🕐 Ish vaqti: 08:40 — 22:40\n\n"
+                "📍 Bloom Bozor: Angren, Bozor yaqini\n"
+                "📍 Bloom Kalso: Angren, Kalso")
+
+        elif text == "/orders":
+            await send_message(chat_id,
+                "📋 *Zakaslaringizni ko'rish uchun:*\n\n"
+                "Do'konni ochib *Tarix* bo'limiga o'ting 👇",
+                {"inline_keyboard": [[
+                    {"text": "📋 Zakaslarim", "url": "https://t.me/bloomuz_bot/fastfood"}
+                ]]})
+
+    # Callback
     elif "callback_query" in data:
         cb = data["callback_query"]
         cb_id = cb["id"]
         cb_data = cb.get("data", "")
         chat_id = cb["message"]["chat"]["id"]
         msg_id = cb["message"]["message_id"]
-        await answer_callback(cb_id)
 
         if cb_data == "help":
+            await answer_callback(cb_id)
             await send_message(chat_id,
                 "🙋 *Yordam*\n\n"
-                "📞 Tel: +998 50 211 18 06\n"
-                "✈️ Telegram: @samik\\_1806\n"
-                "🕐 Ish vaqti: 08:00 — 22:00")
+                "📞 Tel: +998 78 555 08 08\n"
+                "✈️ @bloom\\_support\n"
+                "🕐 08:40 — 22:40")
+
+        elif cb_data == "done":
+            await answer_callback(cb_id)
 
         elif cb_data.startswith("accept_"):
             parts = cb_data.split("_")
             user_id = parts[1]
             order_id = parts[2]
-            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[{"text": "✅ Qabul qilindi", "callback_data": "done"}]]})
+            await answer_callback(cb_id, "✅ Qabul qilindi!")
+            # Admin xabarini yangilash
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
+                {"text": "✅ Qabul qilindi", "callback_data": "done"},
+                {"text": "🚚 Yo'lda", "callback_data": f"way_{user_id}_{order_id}"},
+            ]]})
+            # Mijozga xabar
             if user_id and user_id != "0":
-                await send_message(user_id,
-                    f"✅ *Buyurtmangiz qabul qilindi!*\n"
-                    f"🆔 #{order_id}\n"
-                    f"🚚 Tez orada yetkazib beramiz!\n"
-                    f"📞 +998 71 200 00 00")
+                try:
+                    await send_message(int(user_id),
+                        f"✅ *Buyurtmangiz qabul qilindi!*\n\n"
+                        f"🆔 #{order_id}\n"
+                        f"👨‍🍳 Tayyorlanmoqda...\n\n"
+                        f"📞 Savollar: +998 78 555 08 08")
+                except: pass
+
+        elif cb_data.startswith("way_"):
+            parts = cb_data.split("_")
+            user_id = parts[1]
+            order_id = parts[2]
+            await answer_callback(cb_id, "🚚 Yo'lda!")
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
+                {"text": "🚚 Yo'lda", "callback_data": "done"},
+                {"text": "🎉 Yetkazildi", "callback_data": f"done_{user_id}_{order_id}"},
+            ]]})
+            if user_id and user_id != "0":
+                try:
+                    await send_message(int(user_id),
+                        f"🚚 *Buyurtmangiz yo'lda!*\n\n"
+                        f"🆔 #{order_id}\n"
+                        f"⏰ Tez orada yetkazib beramiz!")
+                except: pass
+
+        elif cb_data.startswith("done_"):
+            parts = cb_data.split("_")
+            user_id = parts[1]
+            order_id = parts[2]
+            await answer_callback(cb_id, "🎉 Yetkazildi!")
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
+                {"text": "🎉 Yetkazildi!", "callback_data": "done"},
+            ]]})
+            if user_id and user_id != "0":
+                try:
+                    await send_message(int(user_id),
+                        f"🎉 *Buyurtmangiz yetkazildi!*\n\n"
+                        f"🆔 #{order_id}\n"
+                        f"Rahmat! Yana keling 🌸\n\n"
+                        f"⭐ Baholang: t.me/bloomuz\\_bot/fastfood")
+                except: pass
 
         elif cb_data.startswith("reject_"):
             parts = cb_data.split("_")
             user_id = parts[1]
             order_id = parts[2]
-            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[{"text": "❌ Bekor qilindi", "callback_data": "done"}]]})
+            await answer_callback(cb_id, "❌ Bekor qilindi!")
+            await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
+                {"text": "❌ Bekor qilindi", "callback_data": "done"}
+            ]]})
             if user_id and user_id != "0":
-                await send_message(user_id,
-                    f"😔 *Kechirasiz, hozircha buyurtma qabul qilib bo'lmaydi.*\n"
-                    f"🆔 #{order_id}\n"
-                    f"📞 +998 71 200 00 00")
+                try:
+                    await send_message(int(user_id),
+                        f"😔 *Kechirasiz, hozircha buyurtmani qabul qilib bo'lmaydi.*\n\n"
+                        f"🆔 #{order_id}\n"
+                        f"📞 Batafsil: +998 78 555 08 08")
+                except: pass
 
-# CORS headers qo'shish
 def cors_headers():
     return {
         "Access-Control-Allow-Origin": "*",
@@ -96,7 +168,6 @@ async def telegram_webhook(request):
     return web.Response(text="ok", headers=cors_headers())
 
 async def order_webhook(request):
-    # OPTIONS preflight
     if request.method == "OPTIONS":
         return web.Response(status=200, headers=cors_headers())
     try:
