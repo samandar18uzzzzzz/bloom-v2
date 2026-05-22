@@ -876,6 +876,7 @@ header {
 /* STARS badge */
 .new-badge { background: var(--red); color: #fff; font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle; }
 </style>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -1773,6 +1774,16 @@ function updSummary() {
 }
 
 // ── PLACE ORDER ─────────────────────────────────
+function getTgUserId() {
+  try {
+    if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+      var user = window.Telegram.WebApp.initDataUnsafe.user;
+      if(user && user.id) return user.id;
+    }
+  } catch(e) {}
+  return 0;
+}
+
 function placeOrder() {
   if(!savat.length) { showT("❗ Savat bo'sh!"); showPage('home'); return; }
   var name = orderType === 'd' ? document.getElementById('f-name').value : document.getElementById('p-name').value;
@@ -1783,6 +1794,9 @@ function placeOrder() {
   var typeL = orderType === 'd' ? '🚚 Yetkazib berish' : '🏪 Olib ketish';
   var oid = '#' + Math.floor(Math.random() * 90000 + 10000);
 
+  // Telegram User ID olish
+  var tgUserId = getTgUserId();
+
   var order = {
     id: oid,
     date: new Date().toLocaleString('uz-UZ'),
@@ -1792,6 +1806,7 @@ function placeOrder() {
     type: typeL,
     slot: slot,
     pay: '💵 Naqd pul',
+    chat_id: tgUserId,
     items: savat.map(function(s) { return {emoji:s.emoji,nom:s.nom,n:s.n,narx:s.narx}; }),
     total: jami
   };
