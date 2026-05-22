@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 TG_API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
+# ── ZAKASLAR XOTIRASI (server ichida) ─────────
+orders_db = {}  # {order_id: {status, user_id, ...}}
+
 async def send_message(chat_id, text, reply_markup=None):
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
     if reply_markup:
@@ -31,7 +34,6 @@ async def answer_callback(callback_id, text=""):
         await s.post(f"{TG_API}/answerCallbackQuery", json={"callback_query_id": callback_id, "text": text})
 
 async def handle_update(data):
-    # /start
     if "message" in data:
         msg = data["message"]
         text = msg.get("text", "")
@@ -46,8 +48,7 @@ async def handle_update(data):
             await send_message(chat_id,
                 "🌸 *Bloom Fast Food ga xush kelibsiz!*\n\n"
                 "Tez va mazali taomlar eshigingizgacha! 🚀\n\n"
-                "Buyurtma berish uchun do'konni oching 👇",
-                kb)
+                "Buyurtma berish uchun do'konni oching 👇", kb)
 
         elif text == "/help":
             await send_message(chat_id,
@@ -66,7 +67,6 @@ async def handle_update(data):
                     {"text": "📋 Zakaslarim", "url": "https://t.me/bloomuz_bot/fastfood"}
                 ]]})
 
-    # Callback
     elif "callback_query" in data:
         cb = data["callback_query"]
         cb_id = cb["id"]
@@ -90,6 +90,9 @@ async def handle_update(data):
             user_id = parts[1]
             order_id = parts[2]
             await answer_callback(cb_id, "✅ Qabul qilindi!")
+            # Serverda holatni saqlash
+            if order_id in orders_db:
+                orders_db[order_id]["status"] = "prep"
             # Admin xabarini yangilash
             await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
                 {"text": "✅ Qabul qilindi", "callback_data": "done"},
@@ -110,9 +113,12 @@ async def handle_update(data):
             user_id = parts[1]
             order_id = parts[2]
             await answer_callback(cb_id, "🚚 Yo'lda!")
+            # Serverda holatni saqlash
+            if order_id in orders_db:
+                orders_db[order_id]["status"] = "way"
             await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
                 {"text": "🚚 Yo'lda", "callback_data": "done"},
-                {"text": "🎉 Yetkazildi", "callback_data": f"done_{user_id}_{order_id}"},
+                {"text": "🎉 Yetkazildi", "callback_data": f"delivered_{user_id}_{order_id}"},
             ]]})
             if user_id and user_id != "0":
                 try:
@@ -122,11 +128,14 @@ async def handle_update(data):
                         f"⏰ Tez orada yetkazib beramiz!")
                 except: pass
 
-        elif cb_data.startswith("done_"):
+        elif cb_data.startswith("delivered_"):
             parts = cb_data.split("_")
             user_id = parts[1]
             order_id = parts[2]
             await answer_callback(cb_id, "🎉 Yetkazildi!")
+            # Serverda holatni saqlash
+            if order_id in orders_db:
+                orders_db[order_id]["status"] = "done"
             await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
                 {"text": "🎉 Yetkazildi!", "callback_data": "done"},
             ]]})
@@ -136,7 +145,7 @@ async def handle_update(data):
                         f"🎉 *Buyurtmangiz yetkazildi!*\n\n"
                         f"🆔 #{order_id}\n"
                         f"Rahmat! Yana keling 🌸\n\n"
-                        f"⭐ Baholang: t.me/bloomuz\\_bot/fastfood")
+                        f"Baholang: t.me/bloomuz\\_bot/fastfood")
                 except: pass
 
         elif cb_data.startswith("reject_"):
@@ -144,6 +153,9 @@ async def handle_update(data):
             user_id = parts[1]
             order_id = parts[2]
             await answer_callback(cb_id, "❌ Bekor qilindi!")
+            # Serverda holatni saqlash
+            if order_id in orders_db:
+                orders_db[order_id]["status"] = "rejected"
             await edit_markup(chat_id, msg_id, {"inline_keyboard": [[
                 {"text": "❌ Bekor qilindi", "callback_data": "done"}
             ]]})
@@ -167,13 +179,24 @@ async def telegram_webhook(request):
     asyncio.create_task(handle_update(data))
     return web.Response(text="ok", headers=cors_headers())
 
+# ── ZAKAZ QABUL QILISH ─────────────────────────
 async def order_webhook(request):
     if request.method == "OPTIONS":
         return web.Response(status=200, headers=cors_headers())
     try:
         data = await request.json()
-        logger.info(f"Zakaz keldi: {data}")
         o = data.get("order", {})
+        order_id = o.get("id","").replace("#","")
+        uid = str(o.get("chat_id", 0))
+
+        # Serverda saqlash
+        orders_db[order_id] = {
+            "status": "new",
+            "user_id": uid,
+            "total": o.get("total", 0),
+            "name": o.get("name", ""),
+        }
+
         items = "\n".join([
             f"  {i.get('emoji','')} {i.get('nom','')} x{i.get('n',1)} = {i.get('narx',0)*i.get('n',1):,} so'm"
             for i in o.get("items", [])
@@ -189,17 +212,31 @@ async def order_webhook(request):
             f"🛒 *Mahsulotlar:*\n{items}\n\n"
             f"💰 *Jami: {o.get('total',0):,} so'm*"
         )
-        uid = str(o.get("chat_id", 0))
-        oid = o.get("id","").replace("#","")
         kb = {"inline_keyboard": [[
-            {"text": "✅ Qabul qilish", "callback_data": f"accept_{uid}_{oid}"},
-            {"text": "❌ Bekor qilish", "callback_data": f"reject_{uid}_{oid}"},
+            {"text": "✅ Qabul qilish", "callback_data": f"accept_{uid}_{order_id}"},
+            {"text": "❌ Bekor qilish", "callback_data": f"reject_{uid}_{order_id}"},
         ]]}
         await send_message(ADMIN_ID, text, kb)
         return web.json_response({"ok": True}, headers=cors_headers())
     except Exception as e:
         logger.error(f"Xato: {e}")
         return web.json_response({"ok": False, "error": str(e)}, status=500, headers=cors_headers())
+
+# ── HOLAT SO'RASH (Mini App polling) ──────────
+async def status_webhook(request):
+    if request.method == "OPTIONS":
+        return web.Response(status=200, headers=cors_headers())
+    try:
+        data = await request.json()
+        order_ids = data.get("ids", [])
+        result = {}
+        for oid in order_ids:
+            clean = oid.replace("#", "")
+            if clean in orders_db:
+                result[oid] = orders_db[clean]["status"]
+        return web.json_response({"ok": True, "statuses": result}, headers=cors_headers())
+    except Exception as e:
+        return web.json_response({"ok": False}, status=500, headers=cors_headers())
 
 async def health(request):
     return web.Response(text="Bloom Bot ishlayapti! 🌸", headers=cors_headers())
@@ -215,7 +252,9 @@ app = web.Application()
 app.router.add_get("/", health)
 app.router.add_post("/tg", telegram_webhook)
 app.router.add_post("/webhook", order_webhook)
+app.router.add_post("/status", status_webhook)
 app.router.add_route("OPTIONS", "/webhook", order_webhook)
+app.router.add_route("OPTIONS", "/status", status_webhook)
 app.on_startup.append(setup_webhook)
 
 if __name__ == "__main__":
