@@ -86,11 +86,13 @@ body::after {
 /* HEADER */
 header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(10,10,10,0.85);
-  backdrop-filter: blur(24px);
+  background: rgba(10,10,10,0.7);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
   padding: 14px 20px;
   display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03);
 }
 .logo {
   font-family: 'Playfair Display', serif;
@@ -150,24 +152,31 @@ header {
 /* BOTTOM NAV */
 .bnav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: rgba(10,10,10,0.95);
-  backdrop-filter: blur(24px);
-  border-top: 1px solid var(--border);
+  background: rgba(10,10,10,0.75);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-top: 1px solid rgba(255,255,255,0.08);
   display: flex; justify-content: space-around;
-  padding: 8px 0 18px;
+  padding: 10px 0 28px;
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.04);
 }
 .bitem {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  cursor: pointer; padding: 5px 12px; border-radius: 14px;
-  transition: all 0.2s; border: none; background: none;
+  cursor: pointer; padding: 6px 14px; border-radius: 16px;
+  transition: all 0.25s cubic-bezier(.22,1,.36,1);
+  border: none; background: none;
   font-family: 'Plus Jakarta Sans', sans-serif;
   position: relative;
 }
-.bico { font-size: 18px; transition: transform 0.2s; }
-.blbl { font-size: 9px; font-weight: 700; color: var(--gray2); letter-spacing: 0.3px; }
+.bitem:active { transform: scale(0.92); }
+.bico { font-size: 20px; transition: transform 0.25s cubic-bezier(.22,1,.36,1); }
+.blbl { font-size: 10px; font-weight: 600; color: var(--gray2); letter-spacing: 0.2px; transition: color 0.2s; }
 .bitem.on .blbl { color: var(--green); }
-.bitem.on { background: rgba(0,230,118,0.08); }
-.bitem.on .bico { transform: scale(1.15); }
+.bitem.on {
+  background: rgba(0,230,118,0.1);
+  box-shadow: 0 0 20px rgba(0,230,118,0.08);
+}
+.bitem.on .bico { transform: scale(1.2) translateY(-1px); }
 .bnotif {
   position: absolute; top: 0; right: 4px;
   background: var(--red); color: #fff;
