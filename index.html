@@ -875,10 +875,106 @@ header {
 
 /* STARS badge */
 .new-badge { background: var(--red); color: #fff; font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle; }
+
+/* SPLASH SCREEN */
+.splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #0a0a0a;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: opacity 0.6s, visibility 0.6s;
+}
+.splash.hide { opacity: 0; visibility: hidden; }
+.splash-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 56px; font-weight: 900;
+  color: #00e676;
+  letter-spacing: -2px;
+  animation: splashLogo 1s cubic-bezier(.22,1,.36,1);
+  position: relative;
+}
+@keyframes splashLogo {
+  0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+  60% { transform: scale(1.1) translateY(-5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.splash-sub {
+  font-size: 11px; font-weight: 700;
+  color: #555; letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  animation: fadeIn 0.8s ease 0.4s both;
+}
+.splash-loader {
+  margin-top: 40px;
+  width: 140px; height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px; overflow: hidden;
+  position: relative;
+}
+.splash-loader::after {
+  content: ''; position: absolute;
+  left: 0; top: 0; height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, #00e676, transparent);
+  animation: loaderSlide 1.2s ease-in-out infinite;
+}
+@keyframes loaderSlide {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+.splash-emojis {
+  position: absolute;
+  font-size: 28px;
+  opacity: 0;
+}
+.se1 { top: 25%; left: 20%; animation: floatEmoji 2.5s ease-in-out infinite; }
+.se2 { top: 30%; right: 18%; animation: floatEmoji 2.8s ease-in-out 0.3s infinite; }
+.se3 { bottom: 28%; left: 25%; animation: floatEmoji 3s ease-in-out 0.6s infinite; }
+.se4 { bottom: 32%; right: 22%; animation: floatEmoji 2.6s ease-in-out 0.9s infinite; }
+@keyframes floatEmoji {
+  0%, 100% { opacity: 0.15; transform: translateY(0) rotate(-5deg); }
+  50% { opacity: 0.4; transform: translateY(-15px) rotate(5deg); }
+}
+
+/* FLY TO CART ANIMATION */
+.fly-item {
+  position: fixed;
+  font-size: 28px;
+  z-index: 9998;
+  pointer-events: none;
+  transition: all 0.7s cubic-bezier(.18,.89,.32,1.1);
+}
+
+/* CART BADGE BOUNCE */
+@keyframes badgeBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+.cbadge.bounce { animation: badgeBounce 0.4s ease; }
+
+/* CART ICON SHAKE */
+@keyframes cartShake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  75% { transform: rotate(12deg); }
+}
+.cart-btn.shake { animation: cartShake 0.4s ease; }
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+<div class="splash" id="splash">
+  <div class="splash-emojis se1">🍕</div>
+  <div class="splash-emojis se2">🍔</div>
+  <div class="splash-emojis se3">🌯</div>
+  <div class="splash-emojis se4">🍗</div>
+  <div class="splash-logo">bloom</div>
+  <div class="splash-sub">Sevimli va Mazzali</div>
+  <div class="splash-loader"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <header>
@@ -978,7 +1074,7 @@ header {
       <label class="flbl" id="lbl-name">ISMINGIZ</label>
       <input class="finp" id="f-name" placeholder="To'liq ismingiz">
       <label class="flbl" id="lbl-phone">TELEFON</label>
-      <input class="finp" id="f-phone" placeholder="+998 90 123 45 67" type="tel">
+      <input class="finp" id="f-phone" placeholder="+998 90 123 45 67" type="tel" oninput="fmtPhone(this)">
       <label class="flbl" id="lbl-addr">MANZIL</label>
       <input class="finp" id="f-addr" placeholder="Ko'cha, uy, kvartira">
       <label class="flbl" id="lbl-time">YETKAZISH VAQTI</label>
@@ -990,7 +1086,7 @@ header {
       <label class="flbl" id="lbl-pname">ISMINGIZ</label>
       <input class="finp" id="p-name" placeholder="To'liq ismingiz">
       <label class="flbl" id="lbl-pphone">TELEFON</label>
-      <input class="finp" id="p-phone" placeholder="+998 90 123 45 67" type="tel">
+      <input class="finp" id="p-phone" placeholder="+998 90 123 45 67" type="tel" oninput="fmtPhone(this)">
       <label class="flbl" id="lbl-branch">FILIAL</label>
       <div class="branch-g">
         <div class="bcard on" id="br-bozor" onclick="selBr('bozor')">
@@ -1075,9 +1171,9 @@ header {
   <div class="divider"></div>
   <div class="sublbl" id="txt-contactlbl">BOG'LANISH</div>
   <div class="cgrid">
-    <div class="ccard" onclick="window.open('https://t.me/bloom_support')"><div class="cico">✈️</div><div class="ctit">Telegram</div><div class="csub">@bloom_support</div></div>
-    <div class="ccard" onclick="window.open('tel:+998785550808')"><div class="cico">📞</div><div class="ctit">Telefon</div><div class="csub">+998 78 555 08 08</div></div>
-    <div class="ccard" onclick="window.open('https://instagram.com/bloom.uz')"><div class="cico">📸</div><div class="ctit">Instagram</div><div class="csub">@bloom.uz</div></div>
+    <div class="ccard" onclick="window.open('https://t.me/samik_1806')"><div class="cico">✈️</div><div class="ctit">Telegram</div><div class="csub">@samik_1806</div></div>
+    <div class="ccard" onclick="window.open('tel:+998502111806')"><div class="cico">📞</div><div class="ctit">Telefon</div><div class="csub">+998 50 211 18 06</div></div>
+    <div class="ccard" onclick="window.open('https://www.instagram.com/samik_dev')"><div class="cico">📸</div><div class="ctit">Instagram</div><div class="csub">@samik_dev</div></div>
     <div class="ccard" onclick="toast('info@bloom.uz')"><div class="cico">📧</div><div class="ctit">Email</div><div class="csub">info@bloom.uz</div></div>
   </div>
   <div class="divider"></div>
@@ -1147,6 +1243,8 @@ header {
 
 <script>
 var WEBHOOK = "https://bloom-v2-1-61np.onrender.com/webhook";
+var FREE_DELIVERY_MIN = 50000;
+var DELIVERY_FEE = 10000;
 
 // ── MENYU ──────────────────────────────────────
 var menu = {
@@ -1291,6 +1389,7 @@ var timeSlots = ["10:00-11:00","11:00-12:00","12:00-13:00","13:00-14:00","15:00-
 var savat = [];
 var curCat = 'all';
 var selSizes = {};
+var orderSending = false;
 var orderType = 'd';
 var selSlot = '';
 var selPSlot = '';
@@ -1467,6 +1566,7 @@ function renderOrders() {
       + '<div class="status ' + statusCls + '"><div class="sdot"></div><span class="slbl">' + statusLabel + '</span></div>'
       + '</div>'
       + '<div class="stepper">' + stepper + '</div>'
+      + (o.status === 'new' ? '<button onclick="cancelMyOrder(\'' + o.id + '\')" style="width:100%;margin-top:10px;padding:8px;background:rgba(255,23,68,0.1);color:#ff1744;border:1px solid rgba(255,23,68,0.2);border-radius:8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;">❌ Zakazni bekor qilish</button>' : '')
       + '</div>';
   });
   area.innerHTML = html;
@@ -1476,6 +1576,90 @@ function renderOrders() {
   if(b) { b.textContent = active; b.style.display = active ? 'flex' : 'none'; }
 }
 
+
+
+// ── TELEFON FORMATLASH ────────────────────────
+function fmtPhone(el) {
+  var v = el.value.replace(/\D/g, '');
+  if(v.startsWith('998')) v = v.substring(3);
+  if(v.length > 9) v = v.substring(0, 9);
+  var f = '+998';
+  if(v.length > 0) f += ' ' + v.substring(0, 2);
+  if(v.length > 2) f += ' ' + v.substring(2, 5);
+  if(v.length > 5) f += ' ' + v.substring(5, 7);
+  if(v.length > 7) f += ' ' + v.substring(7, 9);
+  el.value = f;
+}
+
+// ── YETKAZISH NARXI HISOBI ────────────────────
+function getDeliveryInfo() {
+  var subtotal = 0;
+  savat.forEach(function(i) { subtotal += i.narx * i.n; });
+  var fee = 0;
+  if(orderType === 'd' && subtotal < FREE_DELIVERY_MIN) {
+    fee = DELIVERY_FEE;
+  }
+  return { subtotal: subtotal, fee: fee, total: subtotal + fee };
+}
+
+
+// ── SAVATGA UCHISH ANIMATSIYASI ───────────────
+function flyToCart(emoji, e) {
+  var cartBtn = document.querySelector('.cart-btn');
+  if(!cartBtn) { showT(emoji + ' Savatga qo\'shildi!'); return; }
+
+  var startX, startY;
+  if(e && (e.clientX || (e.touches && e.touches[0]))) {
+    startX = e.clientX || e.touches[0].clientX;
+    startY = e.clientY || e.touches[0].clientY;
+  } else if(e && e.target) {
+    var r = e.target.getBoundingClientRect();
+    startX = r.left + r.width/2;
+    startY = r.top + r.height/2;
+  } else {
+    startX = window.innerWidth / 2;
+    startY = window.innerHeight / 2;
+  }
+
+  var cartRect = cartBtn.getBoundingClientRect();
+  var endX = cartRect.left + cartRect.width/2;
+  var endY = cartRect.top + cartRect.height/2;
+
+  var fly = document.createElement('div');
+  fly.className = 'fly-item';
+  fly.textContent = emoji;
+  fly.style.left = startX + 'px';
+  fly.style.top = startY + 'px';
+  document.body.appendChild(fly);
+
+  // Trigger animation
+  requestAnimationFrame(function() {
+    fly.style.left = endX + 'px';
+    fly.style.top = endY + 'px';
+    fly.style.transform = 'scale(0.3)';
+    fly.style.opacity = '0.5';
+  });
+
+  setTimeout(function() {
+    fly.remove();
+    // Badge bounce
+    var badge = document.getElementById('badge');
+    if(badge) { badge.classList.add('bounce'); setTimeout(function(){ badge.classList.remove('bounce'); }, 400); }
+    // Cart shake
+    cartBtn.classList.add('shake');
+    setTimeout(function(){ cartBtn.classList.remove('shake'); }, 400);
+    // Vibrate
+    if(navigator.vibrate) navigator.vibrate(10);
+  }, 700);
+}
+
+// ── SPLASH SCREEN ─────────────────────────────
+function hideSplash() {
+  setTimeout(function() {
+    var sp = document.getElementById('splash');
+    if(sp) sp.classList.add('hide');
+  }, 1500);
+}
 
 // ── SCROLL TO TOP ─────────────────────────────
 window.addEventListener('scroll', function() {
@@ -1663,8 +1847,9 @@ function addItem(id, si) {
   if(ex) { ex.n++; } else { savat.push({key:key,id:id,nom:found.nom+(found.sizes.length>1?' ('+sz.l+')':''),emoji:found.emoji,narx:sz.n,n:1}); }
   try { localStorage.setItem('bl_cart', JSON.stringify(savat)); } catch(e) {}
   updBadge();
-  showT(found.emoji + ' ' + found.nom + " savatga qo'shildi!");
+  flyToCart(found.emoji, event);
 }
+
 
 function addSet(id) {
   var found = null;
@@ -1675,8 +1860,9 @@ function addSet(id) {
   if(ex) { ex.n++; } else { savat.push({key:id,id:id,nom:found.nom,emoji:found.emoji,narx:found.narx,n:1}); }
   try { localStorage.setItem('bl_cart', JSON.stringify(savat)); } catch(e) {}
   updBadge();
-  showT(found.emoji + ' ' + found.nom + " savatga qo'shildi!");
+  flyToCart(found.emoji, event);
 }
+
 
 function updBadge() {
   var t = 0; savat.forEach(function(i) { t += i.n; });
@@ -1756,9 +1942,29 @@ function pickSlot(el, t, s) {
   if(t === 'd') selSlot = s; else selPSlot = s;
 }
 
+function validatePhone(phone) {
+  // +998 XX XXX XX XX yoki shунga o'xshash
+  var digits = phone.replace(/\D/g, '');
+  return digits.length >= 9;
+}
+
 function goPayment() {
-  var n = orderType === 'd' ? document.getElementById('f-name').value : document.getElementById('p-name').value;
-  if(!n.trim()) { showT('❗ Ismingizni kiriting!'); return; }
+  var name, phone, addr;
+  if(orderType === 'd') {
+    name = document.getElementById('f-name').value;
+    phone = document.getElementById('f-phone').value;
+    addr = document.getElementById('f-addr').value;
+  } else {
+    name = document.getElementById('p-name').value;
+    phone = document.getElementById('p-phone').value;
+    addr = 'filial';
+  }
+
+  if(!name.trim()) { showT('❗ Ismingizni kiriting!'); return; }
+  if(!phone.trim()) { showT('❗ Telefon raqamingizni kiriting!'); return; }
+  if(!validatePhone(phone)) { showT('❗ Telefon raqam noto\'g\'ri! (kamida 9 raqam)'); return; }
+  if(orderType === 'd' && !addr.trim()) { showT('❗ Yetkazish manzilini kiriting!'); return; }
+
   updSummary(); showPage('pay');
 }
 
@@ -1767,13 +1973,24 @@ function updSummary() {
   savat.forEach(function(s) {
     rows += '<div class="srow">' + s.emoji + ' ' + s.nom + ' x' + s.n + ' = ' + (s.narx * s.n).toLocaleString() + " so'm</div>";
   });
-  if(!rows) rows = "<div class='srow' style='color:#aaa'>Savat bo'sh</div>";
+  if(!rows) rows = "<div class='srow' style='color:#888'>Savat bo\'sh</div>";
+
+  var info = getDeliveryInfo();
+
+  // Yetkazish narxi qatori
+  if(orderType === 'd') {
+    if(info.fee > 0) {
+      rows += '<div class="srow" style="color:#ffd600;">🚚 Yetkazish = ' + info.fee.toLocaleString() + " so'm</div>";
+    } else if(info.subtotal >= FREE_DELIVERY_MIN) {
+      rows += '<div class="srow" style="color:#00e676;">🚚 Yetkazish = BEPUL ✓</div>';
+    }
+  }
+
   document.getElementById('sumrows').innerHTML = rows;
-  var jami = 0; savat.forEach(function(i) { jami += i.narx * i.n; });
-  document.getElementById('sumtot').textContent = jami.toLocaleString() + " so'm";
+  document.getElementById('sumtot').textContent = info.total.toLocaleString() + " so'm";
 }
 
-// ── PLACE ORDER ─────────────────────────────────
+
 function getTgUserId() {
   try {
     if(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
@@ -1785,16 +2002,24 @@ function getTgUserId() {
 }
 
 function placeOrder() {
-  if(!savat.length) { showT("❗ Savat bo'sh!"); showPage('home'); return; }
+  if(orderSending) { return; }  // Double-click himoya
+  if(!savat.length) { showT("❗ Savat bo\'sh!"); showPage('home'); return; }
+
   var name = orderType === 'd' ? document.getElementById('f-name').value : document.getElementById('p-name').value;
   var phone = orderType === 'd' ? document.getElementById('f-phone').value : document.getElementById('p-phone').value;
   var addr = orderType === 'd' ? document.getElementById('f-addr').value : (selBrKey === 'bozor' ? 'Bloom Bozor' : 'Bloom Kalso');
-  var jami = 0; savat.forEach(function(i) { jami += i.narx * i.n; });
+  var subtotal = 0; savat.forEach(function(i) { subtotal += i.narx * i.n; });
+
+  // Yetkazish narxi
+  var deliveryFee = 0;
+  if(orderType === 'd' && subtotal < FREE_DELIVERY_MIN) {
+    deliveryFee = DELIVERY_FEE;
+  }
+  var jami = subtotal + deliveryFee;
+
   var slot = orderType === 'd' ? (selSlot || '—') : (selPSlot || '—');
   var typeL = orderType === 'd' ? '🚚 Yetkazib berish' : '🏪 Olib ketish';
   var oid = '#' + Math.floor(Math.random() * 90000 + 10000);
-
-  // Telegram User ID olish
   var tgUserId = getTgUserId();
 
   var order = {
@@ -1808,34 +2033,64 @@ function placeOrder() {
     pay: '💵 Naqd pul',
     chat_id: tgUserId,
     items: savat.map(function(s) { return {emoji:s.emoji,nom:s.nom,n:s.n,narx:s.narx}; }),
-    total: jami
+    total: jami,
+    deliveryFee: deliveryFee
   };
 
-  try {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', WEBHOOK, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({order: order}));
-  } catch(e) {}
+  // Tugmani bloklash
+  orderSending = true;
+  var btn = document.getElementById('btn-confirm');
+  if(btn) { btn.textContent = '⏳ Yuborilmoqda...'; btn.style.opacity = '0.6'; }
 
-  document.getElementById('sdet').innerHTML =
-    '<div>👤 ' + order.name + '</div>'
-    + '<div>📞 ' + order.phone + '</div>'
-    + '<div>' + order.type + '</div>'
-    + '<div>🕐 ' + order.slot + '</div>'
-    + '<div>💵 Naqd pul</div>'
-    + '<div style="color:#2e7d32;font-size:13px;margin-top:5px;">💰 ' + jami.toLocaleString() + " so'm</div>"
-    + '<div style="color:#aaa;font-size:11px;">' + oid + '</div>';
+  fetch(WEBHOOK, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({order: order})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(resp) {
+    orderSending = false;
+    if(btn) { btn.textContent = '✅ Buyurtmani tasdiqlash'; btn.style.opacity = '1'; }
 
-  // Zakasni saqlash
-  var orders = loadOrders();
-  order.status = 'new';
-  orders.unshift(order);
-  saveOrders(orders);
-  // Status faqat admin tasdiqlashi bilan o'zgaradi
+    if(!resp.ok) {
+      // Server xatosi
+      if(resp.error === 'closed') {
+        showT('🔴 Kechirasiz, do\'kon hozir yopiq!');
+      } else if(resp.error === 'min_order') {
+        showT('💰 ' + (resp.message || 'Minimal zakaz summasi yetarli emas!'));
+      } else if(resp.error === 'rate_limit') {
+        showT('⏱️ Juda ko\'p zakaz! Biroz kuting.');
+      } else {
+        showT('❌ Xatolik! Qaytadan urinib ko\'ring.');
+      }
+      return;
+    }
 
-  document.getElementById('smod').className = 'smod on';
+    // Muvaffaqiyatli
+    var orders = loadOrders();
+    order.status = 'new';
+    orders.unshift(order);
+    saveOrders(orders);
+
+    document.getElementById('sdet').innerHTML =
+      '<div>👤 ' + order.name + '</div>'
+      + '<div>📞 ' + order.phone + '</div>'
+      + '<div>' + order.type + '</div>'
+      + '<div>🕐 ' + order.slot + '</div>'
+      + '<div>💵 Naqd pul</div>'
+      + (deliveryFee > 0 ? '<div>🚚 Yetkazish: ' + deliveryFee.toLocaleString() + " so'm</div>" : '')
+      + '<div style="color:#00e676;font-size:13px;margin-top:5px;">💰 ' + jami.toLocaleString() + " so'm</div>"
+      + '<div style="color:#888;font-size:11px;">' + oid + '</div>';
+
+    document.getElementById('smod').className = 'smod on';
+  })
+  .catch(function(e) {
+    orderSending = false;
+    if(btn) { btn.textContent = '✅ Buyurtmani tasdiqlash'; btn.style.opacity = '1'; }
+    showT('📵 Internet xatosi! Qaytadan urinib ko\'ring.');
+  });
 }
+
 
 function closeSuc() {
   savat = [];
@@ -1856,6 +2111,24 @@ function buildFaq() {
       + '</div>';
   });
   document.getElementById('faqArea').innerHTML = html;
+}
+
+
+// ── MIJOZ ZAKAZNI BEKOR QILISH ────────────────
+function cancelMyOrder(oid) {
+  if(!confirm('Zakazni bekor qilmoqchimisiz?')) return;
+  var orders = loadOrders();
+  var idx = -1;
+  orders.forEach(function(o, i) { if(o.id === oid) idx = i; });
+  if(idx === -1) return;
+  if(orders[idx].status !== 'new') {
+    showT('⚠️ Bu zakaz allaqachon qabul qilingan!');
+    return;
+  }
+  orders[idx].status = 'rejected';
+  saveOrders(orders);
+  renderOrders();
+  showT('❌ Zakaz bekor qilindi');
 }
 
 // ── PAGES ───────────────────────────────────────
@@ -1913,6 +2186,13 @@ async function checkStatuses() {
     var changed = false;
     var newStatuses = data.statuses || {};
 
+    // Do'kon yopiq holatini tekshirish
+    if(data.is_open === false) {
+      window.shopClosed = true;
+    } else {
+      window.shopClosed = false;
+    }
+
     orders.forEach(function(o) {
       var newStatus = newStatuses[o.id];
       if(newStatus && newStatus !== o.status) {
@@ -1967,6 +2247,7 @@ renderMenu('all');
 updBadge();
 setLang(curLang);
 startPolling();
+hideSplash();
 loadDark();
 loadRatings();
 updProfileUI();
